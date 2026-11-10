@@ -1,5 +1,5 @@
 const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
+const tokenService = require('./token.service');
 const User = require('../models/User');
 const ApiError = require('../utils/ApiError');
 
@@ -18,15 +18,25 @@ exports.signup = async ({ name, email, password }) => {
 
 exports.login = async ({ email, password }) => {
   const user = await User.findOne({ email: email.toLowerCase() }).select('+password');
-  // Same message for both cases so attackers can't tell which emails exist
   if (!user || !(await bcrypt.compare(password, user.password))) {
     throw new ApiError(401, 'Invalid email or password');
   }
 
-  const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-    expiresIn: process.env.JWT_EXPIRES_IN || '1d',
-  });
-  return { token, user: toPublicUser(user) };
+  const tokens = await tokenService.issueTokenPair(user._id); // access + refresh
+  return { ...tokens, user: toPublicUser(user) };
 };
+
+// Trade a valid refresh token for a NEW access token + NEW refresh token.
+exports.refresh = async (refreshToken) => {
+  const userId = await tokenService.consumeRefreshToken(refreshToken);
+
+  const user = await User.findById(userId);
+  if (!user) throw new ApiError(401, 'User no longer exists');
+
+  return tokenService.issueTokenPair(user._id);
+};
+
+exports.logout = (refreshToken) => tokenService.revokeRefreshToken(refreshToken);
+exports.logoutAll = (userId) => tokenService.revokeAllForUser(userId);
 
 exports.toPublicUser = toPublicUser;

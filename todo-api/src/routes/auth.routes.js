@@ -25,6 +25,12 @@ router.post(
   ctrl.login
 );
 
+const refreshRule = body('refreshToken').isString().notEmpty().withMessage('refreshToken is required');
+
+router.post('/refresh', [refreshRule], validate, ctrl.refresh);
+router.post('/logout', [refreshRule], validate, ctrl.logout);
+router.post('/logout-all', auth, ctrl.logoutAll);
+
 router.get('/me', auth, ctrl.me);
 
 module.exports = router;
