@@ -11,6 +11,7 @@ const signAccessToken = (userId) =>
     expiresIn: process.env.JWT_ACCESS_EXPIRES_IN || '15m',
   });
 
+
 // "jti" is a random ID so every refresh token is unique.
 const signRefreshToken = async (userId) => {
   const token = jwt.sign({ id: userId, jti: crypto.randomUUID() }, process.env.JWT_REFRESH_SECRET, {
